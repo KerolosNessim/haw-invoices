@@ -1,0 +1,15 @@
+import { api } from "@/lib/api"
+import type { LoginValues } from "../components/login-form"
+import type { LoginResponse, MeResponse } from "../types"
+
+export const loginApi = (values: LoginValues): Promise<LoginResponse> => {
+  return api.post("/v1/admin/login", values).then((res) => res.data)
+}
+
+export const getMeApi = (): Promise<MeResponse> => {
+  return api.get("/v1/admin/me").then((res) => res.data)
+}
+
+export const logoutApi = (): Promise<LoginResponse> => {
+  return api.post("/v1/admin/logout").then((res) => res.data)
+}

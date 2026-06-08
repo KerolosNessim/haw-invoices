@@ -1,0 +1,44 @@
+import { useMutation } from "@tanstack/react-query"
+import type { AxiosError } from "axios"
+import { useNavigate } from "react-router-dom"
+import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
+import { loginApi } from "../services/auth-api"
+import type { LoginValues } from "../components/login-form"
+import { useAuthStore } from "../store/user-store"
+import type { LoginResponse } from "../types"
+import { extractAuthToken } from "../utils/extract-auth-token"
+import { normalizeAuthUser } from "../utils/normalize-auth-user"
+
+export const useLogin = () => {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const { setAuth } = useAuthStore()
+
+  const { mutate: loginMutation, isPending } = useMutation({
+    mutationFn: (values: LoginValues) => loginApi(values),
+    onSuccess: (data) => {
+      if (data?.data) {
+        const token = extractAuthToken(
+          data.data as unknown as Record<string, unknown>,
+        )
+        if (!token) {
+          toast.error(t("toasts.login_error"))
+          return
+        }
+        localStorage.setItem("token", token)
+        const normalized = normalizeAuthUser(data.data)
+        if (normalized) setAuth(normalized)
+      }
+      toast.success(data?.message || t("toasts.login_success"))
+      navigate("/")
+    },
+    onError: (error: AxiosError<LoginResponse>) => {
+      const raw = error?.response?.data?.message
+      const fromApi = typeof raw === "string" ? raw.trim() : ""
+      toast.error(fromApi || t("toasts.login_error"))
+    },
+  })
+
+  return { loginMutation, isPending }
+}
