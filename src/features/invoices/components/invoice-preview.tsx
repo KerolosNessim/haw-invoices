@@ -44,6 +44,9 @@ export type InvoicePreviewProps = {
   clientName: string;
   clientPhone: string;
   companyName: string;
+  notes?: string;
+  countryNameAr?: string;
+  countryNameEn?: string;
   lineItems: InvoiceLineItem[];
   subtotal: number;
   discount: number;
@@ -60,6 +63,9 @@ export default function InvoicePreview({
   clientName,
   clientPhone,
   companyName,
+  notes = "",
+  countryNameAr = "",
+  countryNameEn = "",
   lineItems,
   subtotal,
   discount,
@@ -74,8 +80,12 @@ export default function InvoicePreview({
     currency.trim() ||
     lineItems.find((row) => row.currency.trim())?.currency ||
     DEFAULT_INVOICE_CURRENCY;
-  const invoiceTitleAr = getInvoiceHeaderTitle(resolvedCurrency);
-  const invoiceTitleEn = getInvoiceHeaderTitleEn(resolvedCurrency);
+  const invoiceTitleAr = countryNameAr.trim()
+    ? `فاتورة مبيعات - ${countryNameAr.trim()}`
+    : getInvoiceHeaderTitle(resolvedCurrency);
+  const invoiceTitleEn = countryNameEn.trim()
+    ? `Sales Invoice - ${countryNameEn.trim()}`
+    : getInvoiceHeaderTitleEn(resolvedCurrency);
   const displayNumber = formatInvoiceNumberDisplay(invoiceNumber);
   const metaDate = formatInvoiceMetaDate(invoiceDateLabel);
   const rows = lineItems.length > 0 ? lineItems : [];
@@ -150,24 +160,25 @@ export default function InvoicePreview({
           <h2 className="mb-3 text-sm font-bold" style={{ color: BRAND_GREEN }}>
             فاتورة إلى
           </h2>
-          <div className="space-y-1.5 text-sm leading-relaxed text-[#333]">
-            <p className="text-right font-medium">
+          <div className="space-y-2 text-sm leading-relaxed text-[#333]">
+            <p>
+              <span className="font-semibold text-[#555]">اسم العميل :</span>{" "}
               {invoiceDisplayText(clientName) || "—"}
             </p>
-            <div
-              className="flex items-center justify-between gap-4"
-              dir="rtl"
-            >
-              <p className="min-w-0 flex-1 text-right">
-                {invoiceDisplayText(companyName) || "—"}
-              </p>
-              <p
-                dir="ltr"
-                className="shrink-0 [unicode-bidi:isolate] text-[#555]"
-              >
+            <p>
+              <span className="font-semibold text-[#555]">اسم الشركه :</span>{" "}
+              {invoiceDisplayText(companyName) || "—"}
+            </p>
+            <p>
+              <span className="font-semibold text-[#555]">رقم الجوال :</span>{" "}
+              <span dir="ltr" className="inline-block [unicode-bidi:isolate]">
                 {clientPhone || "—"}
-              </p>
-            </div>
+              </span>
+            </p>
+            <p>
+              <span className="font-semibold text-[#555]">الملاحظات :</span>{" "}
+              {invoiceDisplayText(notes) || "—"}
+            </p>
           </div>
         </section>
 

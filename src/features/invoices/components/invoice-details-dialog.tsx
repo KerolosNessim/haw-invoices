@@ -8,6 +8,7 @@ import {
 import { Download, FileText, Loader2 } from "lucide-react";
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { useCountries } from "@/features/countries/hooks/useCountries";
 import { useInvoiceDetail } from "../hooks/useInvoices";
 import { downloadInvoiceHtml, printInvoiceElement } from "../utils/download-invoice";
 import { computeInvoiceTotals } from "../utils/invoice-math";
@@ -24,6 +25,15 @@ export default function InvoiceDetailsDialog({ invoiceId, isOpen, onClose }: Pro
   const { t } = useTranslation("translation", { keyPrefix: "invoices" });
   const previewRef = useRef<HTMLDivElement>(null);
   const { data: invoice, isLoading } = useInvoiceDetail(isOpen ? invoiceId : null);
+  const { data: countries = [] } = useCountries();
+
+  const resolvedCountry = invoice?.country_id
+    ? countries.find((row) => row.id === invoice.country_id)
+    : undefined;
+  const countryNameAr =
+    invoice?.country_name_ar || resolvedCountry?.nameAr || "";
+  const countryNameEn =
+    invoice?.country_name_en || resolvedCountry?.nameEn || "";
 
   const lineItems = invoice?.line_items ?? [];
   const totals = computeInvoiceTotals(
@@ -77,6 +87,9 @@ export default function InvoiceDetailsDialog({ invoiceId, isOpen, onClose }: Pro
               clientName={invoice.client_name}
               clientPhone={invoice.client_phone}
               companyName={invoice.company_name}
+              notes={invoice.notes}
+              countryNameAr={countryNameAr}
+              countryNameEn={countryNameEn}
               lineItems={lineItems}
               subtotal={totals.subtotal}
               discount={totals.discount}

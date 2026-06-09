@@ -26,6 +26,7 @@ type Props = {
   onLineCostChange: (key: string, cost: number) => void;
   isLoading?: boolean;
   currency?: string;
+  emptyMessage?: string;
 };
 
 export default function InvoiceCatalogPicker({
@@ -39,6 +40,7 @@ export default function InvoiceCatalogPicker({
   onLineCostChange,
   isLoading,
   currency = "SAR",
+  emptyMessage,
 }: Props) {
   const { t, i18n } = useTranslation("translation", { keyPrefix: "invoices.form" });
   const isAr = i18n.language.startsWith("ar");
@@ -81,16 +83,30 @@ export default function InvoiceCatalogPicker({
             <ComboboxContent className="w-[--anchor-width]">
               <ComboboxList>
                 {typeOptions.length === 0 ? (
-                  <div className="px-3 py-6 text-center text-sm text-muted-foreground">—</div>
+                  <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+                    {emptyMessage ?? "—"}
+                  </div>
                 ) : (
-                  typeOptions.map((opt) => (
-                    <ComboboxItem key={opt.key} value={opt.key}>
-                      {optionLabel(opt)}
-                      <span className="ms-2 text-xs text-muted-foreground" dir="ltr">
-                        {opt.price.toFixed(2)} {opt.currency}
-                      </span>
-                    </ComboboxItem>
-                  ))
+                  typeOptions.map((opt) => {
+                    const title = optionLabel(opt);
+                    return (
+                      <ComboboxItem
+                        key={opt.key}
+                        value={opt.key}
+                        className="justify-between gap-3"
+                      >
+                        <span className="min-w-0 flex-1 truncate text-start">
+                          {title || `#${opt.id}`}
+                        </span>
+                        <span
+                          className="shrink-0 text-xs text-muted-foreground whitespace-nowrap"
+                          dir="ltr"
+                        >
+                          {opt.price.toFixed(2)} {opt.currency}
+                        </span>
+                      </ComboboxItem>
+                    );
+                  })
                 )}
               </ComboboxList>
             </ComboboxContent>

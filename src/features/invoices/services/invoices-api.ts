@@ -1,5 +1,5 @@
 import { api } from "@/lib/api";
-import { readId, unwrapDataArray } from "@/lib/api-payload";
+import { pickLocalized, readId, unwrapDataArray } from "@/lib/api-payload";
 import { plainTextFromHtml } from "@/lib/plain-text-from-html";
 import type {
   CreateInvoicePayload,
@@ -49,6 +49,31 @@ function normalizeLineItem(raw: unknown): InvoiceLineItem | null {
   };
 }
 
+function readCountryNames(r: Record<string, unknown>): {
+  country_id?: number;
+  country_name_ar?: string;
+  country_name_en?: string;
+} {
+  const country = asRecord(r.country);
+  const countryId = parseNumber(r.country_id, 0) || parseNumber(country?.id, 0);
+  const nameSource = country?.name ?? country?.title ?? r.country_name;
+
+  const country_name_ar =
+    pickLocalized(nameSource, "ar") ||
+    (typeof nameSource === "string" ? nameSource : "") ||
+    String(r.country_name_ar ?? "").trim();
+  const country_name_en =
+    pickLocalized(nameSource, "en") ||
+    (typeof nameSource === "string" ? nameSource : "") ||
+    String(r.country_name_en ?? "").trim();
+
+  return {
+    country_id: countryId > 0 ? countryId : undefined,
+    country_name_ar: country_name_ar || undefined,
+    country_name_en: country_name_en || undefined,
+  };
+}
+
 function normalizeInvoiceRow(raw: unknown): InvoiceRow | null {
   const r = asRecord(raw);
   if (!r) return null;
@@ -59,6 +84,10 @@ function normalizeInvoiceRow(raw: unknown): InvoiceRow | null {
     : Array.isArray(r.items)
       ? r.items
       : [];
+  const country = readCountryNames(r);
+  const notes =
+    typeof r.notes === "string" && r.notes.trim() ? r.notes.trim() : undefined;
+
   return {
     id,
     invoice_number: String(r.invoice_number ?? r.number ?? ""),
@@ -72,6 +101,8 @@ function normalizeInvoiceRow(raw: unknown): InvoiceRow | null {
     currency: typeof r.currency === "string" ? r.currency : "",
     created_at: String(r.created_at ?? r.invoice_date ?? ""),
     line_items_count: parseNumber(r.line_items_count, lineItems.length),
+    notes,
+    country_id: country.country_id,
   };
 }
 
@@ -87,12 +118,13 @@ function normalizeInvoiceDetail(raw: unknown): InvoiceDetail | null {
   const line_items = itemsRaw
     .map((item) => normalizeLineItem(item))
     .filter((x): x is InvoiceLineItem => x != null);
+  const country = readCountryNames(r);
   return {
     ...row,
     line_items,
     line_items_count: line_items.length || row.line_items_count,
-    notes_ar: typeof r.notes_ar === "string" ? r.notes_ar : undefined,
-    notes_en: typeof r.notes_en === "string" ? r.notes_en : undefined,
+    country_name_ar: country.country_name_ar,
+    country_name_en: country.country_name_en,
   };
 }
 
@@ -179,6 +211,8 @@ function invoiceDetailFromPayload(
     currency,
     created_at: new Date().toISOString(),
     line_items_count: payload.line_items.length,
+    notes: payload.notes?.trim() || undefined,
+    country_id: payload.country_id,
     line_items: payload.line_items.map((item) => ({
       catalogKey: `${item.type}:${item.id}`,
       type: item.type,
@@ -201,6 +235,8 @@ export async function createInvoice(
 
   const requestBody: CreateInvoicePayload = {
     ...payload,
+    notes: payload.notes?.trim() || undefined,
+    country_id: payload.country_id,
     line_items: payload.line_items.map((item) => ({
       type: item.type,
       id: String(item.id),

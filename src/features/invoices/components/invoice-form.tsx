@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -12,8 +13,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { useCountries } from "@/features/countries/hooks/useCountries";
+import {
+  countryLabel,
+  pickDefaultCountryId,
+} from "@/features/countries/services/countries-api";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import * as z from "zod";
@@ -41,6 +47,8 @@ const schema = z
     discount: z.number().min(0),
     tax: z.number().min(0),
     currency: z.string().min(3).max(3),
+    country_id: z.number().int().min(1, { message: "validation.required" }),
+    notes: z.string().optional(),
   })
   .refine(
     (v) => v.package_keys.length + v.service_keys.length + v.course_keys.length > 0,
@@ -54,16 +62,44 @@ export default function InvoiceForm() {
   const { t: commonT } = useTranslation("translation");
   const navigate = useNavigate();
   const locale = i18n.language.startsWith("ar") ? "ar" : "en";
+  const { data: countries = [], isLoading: countriesLoading } = useCountries();
+  const createMutation = useCreateInvoice();
+
+  const invoiceNumber = useMemo(() => generateInvoiceNumber(), []);
+  const [lineCosts, setLineCosts] = useState<Record<string, number>>({});
+
+  const {
+    control,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      client_name: "",
+      client_phone: "",
+      company_name: "",
+      package_keys: [],
+      service_keys: [],
+      course_keys: [],
+      discount: 0,
+      tax: 0,
+      currency: DEFAULT_INVOICE_CURRENCY,
+      country_id: 0,
+      notes: "",
+    },
+  });
+
+  const watched = watch();
+  const selectedCountryId = watched.country_id > 0 ? watched.country_id : undefined;
+
   const {
     data: catalog = [],
     isLoading: catalogLoading,
     isError: catalogError,
     refetch: refetchCatalog,
-  } = useInvoiceCatalog();
-  const createMutation = useCreateInvoice();
-
-  const invoiceNumber = useMemo(() => generateInvoiceNumber(), []);
-  const [lineCosts, setLineCosts] = useState<Record<string, number>>({});
+  } = useInvoiceCatalog(selectedCountryId);
 
   const syncLineCostsForKeys = useCallback(
     (keys: string[]) => {
@@ -83,27 +119,16 @@ export default function InvoiceForm() {
     setLineCosts((prev) => ({ ...prev, [key]: cost }));
   }, []);
 
-  const {
-    control,
-    handleSubmit,
-    watch,
-    formState: { errors },
-  } = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      client_name: "",
-      client_phone: "",
-      company_name: "",
-      package_keys: [],
-      service_keys: [],
-      course_keys: [],
-      discount: 0,
-      tax: 0,
-      currency: DEFAULT_INVOICE_CURRENCY,
-    },
-  });
+  useEffect(() => {
+    if (countries.length === 0 || watched.country_id > 0) return;
+    const defaultId = pickDefaultCountryId(countries);
+    if (defaultId) setValue("country_id", defaultId, { shouldValidate: true });
+  }, [countries, setValue, watched.country_id]);
 
-  const watched = watch();
+  const selectedCountry = useMemo(
+    () => countries.find((row) => row.id === watched.country_id),
+    [countries, watched.country_id],
+  );
 
   const allCatalogKeys = useMemo(
     () => [...watched.package_keys, ...watched.service_keys, ...watched.course_keys],
@@ -163,6 +188,8 @@ export default function InvoiceForm() {
         company_name: values.company_name.trim(),
         discount: values.discount ?? 0,
         tax: values.tax ?? 0,
+        notes: values.notes?.trim() || undefined,
+        country_id: values.country_id,
         line_items: items.map((row) => ({
           type: row.type,
           id: row.id,
@@ -196,6 +223,48 @@ export default function InvoiceForm() {
             HWEY - {invoiceNumber}
           </span>
         </p>
+
+        <Controller
+          name="country_id"
+          control={control}
+          render={({ field }) => (
+            <Field className="mb-6">
+              <FieldLabel>{t("country")}</FieldLabel>
+              <Select
+                value={field.value > 0 ? String(field.value) : ""}
+                onValueChange={(value) => {
+                  const nextId = Number(value) || 0;
+                  field.onChange(nextId);
+                  setValue("package_keys", []);
+                  setValue("service_keys", []);
+                  setValue("course_keys", []);
+                  setLineCosts({});
+                }}
+                disabled={countriesLoading || countries.length === 0}
+              >
+                <SelectTrigger className="h-12! w-full rounded-2xl">
+                  <SelectValue placeholder={t("select_country")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {countries.map((row) => (
+                    <SelectItem key={row.id} value={String(row.id)}>
+                      {countryLabel(row, locale)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldError
+                errors={[
+                  {
+                    message:
+                      errors.country_id?.message &&
+                      commonT(errors.country_id.message),
+                  },
+                ]}
+              />
+            </Field>
+          )}
+        />
 
         <section className="rounded-2xl border border-border/40 bg-muted/10 p-5 md:p-6">
           <h3
@@ -238,8 +307,27 @@ export default function InvoiceForm() {
                 </Field>
               )}
             />
+            <Controller
+              name="notes"
+              control={control}
+              render={({ field }) => (
+                <Field className="md:col-span-2">
+                  <FieldLabel>{t("notes")}</FieldLabel>
+                  <Textarea
+                    {...field}
+                    rows={3}
+                    placeholder={t("notes_placeholder")}
+                    className="min-h-24 rounded-2xl"
+                  />
+                </Field>
+              )}
+            />
           </div>
         </section>
+
+        {!selectedCountryId ? (
+          <p className="mt-6 text-sm text-muted-foreground">{t("select_country_first")}</p>
+        ) : null}
 
         {catalogError ? (
           <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -256,7 +344,7 @@ export default function InvoiceForm() {
           </div>
         ) : null}
 
-        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="mt-8 grid grid-cols-1 gap-6 ">
           <Controller
             name="package_keys"
             control={control}
@@ -265,6 +353,7 @@ export default function InvoiceForm() {
                 type="package"
                 label={t("packages")}
                 placeholder={t("select_packages")}
+                emptyMessage={t("packages_empty_for_country")}
                 options={catalog}
                 value={field.value}
                 onChange={(keys) => {
@@ -338,7 +427,7 @@ export default function InvoiceForm() {
           <p className="mt-4 text-sm font-medium text-destructive">{catalogKeysError}</p>
         ) : null}
 
-        <div className="mt-6 grid max-w-2xl grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="mt-6 grid  grid-cols-1 gap-4 lg:grid-cols-3 ">
           <Controller
             name="currency"
             control={control}
@@ -351,7 +440,7 @@ export default function InvoiceForm() {
                     field.onChange(normalizeInvoiceCurrency(value))
                   }
                 >
-                  <SelectTrigger className="h-11 w-full rounded-xl">
+                  <SelectTrigger className="h-11! w-full rounded-xl">
                     <SelectValue placeholder={t("currency")} />
                   </SelectTrigger>
                   <SelectContent>
@@ -413,7 +502,11 @@ export default function InvoiceForm() {
           </Button>
           <Button
             type="submit"
-            disabled={createMutation.isPending || allCatalogKeys.length === 0}
+            disabled={
+              createMutation.isPending ||
+              allCatalogKeys.length === 0 ||
+              !selectedCountryId
+            }
             className="rounded-xl px-8 font-bold"
           >
             {createMutation.isPending ? (
@@ -435,6 +528,9 @@ export default function InvoiceForm() {
           clientName={watched.client_name}
           clientPhone={watched.client_phone}
           companyName={watched.company_name}
+          notes={watched.notes}
+          countryNameAr={selectedCountry?.nameAr}
+          countryNameEn={selectedCountry?.nameEn}
           lineItems={lineItems}
           subtotal={subtotal}
           discount={discount}

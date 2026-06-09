@@ -12,7 +12,9 @@ import type { ContractFormDraft, ContractServiceOption } from "../types"
 import { printContractElement } from "../utils/download-contract"
 
 const BRAND_GREEN = "#99C23C"
-const HIGHLIGHT_YELLOW = "#FFFF00"
+const HIGHLIGHT_YELLOW = "yellow"
+const BODY_TEXT_CLASS = "text-[13px] leading-[1.85]"
+const HEADING_TEXT_CLASS = "text-[13px] font-bold"
 const FINGERPRINT_OPACITY = 0.07
 
 const fingerprintSrc = () => {
@@ -67,7 +69,7 @@ function Highlight({
   return (
     <Tag
       className={cn(
-        block ? "rounded-sm p-2" : "rounded-sm px-0.5",
+        block ? "rounded-sm px-1 py-0" : "rounded-sm px-0.5 py-px",
         className,
       )}
       style={{ backgroundColor: HIGHLIGHT_YELLOW }}
@@ -81,7 +83,7 @@ function HighlightedLines({ text }: { text: string }) {
   const lines = splitContractParagraphLines(text)
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-0.5">
       {lines.map((line, index) => (
         <Highlight key={`${index}-${line.slice(0, 12)}`} block>
           {line}
@@ -112,7 +114,7 @@ function ContractPageHeader() {
 function ContractDocumentTitle({ contractNumber }: { contractNumber?: string }) {
   return (
     <div className="contract-doc-title px-10 pt-14 pb-2">
-      <h1 className="text-center text-[22px] font-bold tracking-tight text-[#1a1a1a]">
+      <h1 className="text-center text-[18px] font-bold tracking-tight text-[#1a1a1a]">
         عقد تسويق إلكتروني
       </h1>
       {contractNumber ? (
@@ -287,7 +289,7 @@ export default function ContractPreview({
             <td className="relative p-0 align-top">
               <FingerprintWatermark />
 
-              <main className="contract-page-content space-y-5 px-10 pb-8 pt-0 text-[15px] leading-[1.95]">
+              <main className={cn("contract-page-content space-y-4 px-10 pb-8 pt-0", BODY_TEXT_CLASS)}>
                 <ContractDocumentTitle contractNumber={contractNumber} />
 
           <section className="space-y-3">
@@ -313,7 +315,7 @@ export default function ContractPreview({
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-[15px] font-bold">
+            <h2 className={HEADING_TEXT_CLASS}>
               المادة (1): موضوع العقد
             </h2>
             <p>
@@ -350,7 +352,7 @@ export default function ContractPreview({
           </section>
 
           <section className="space-y-2">
-            <h2 className="text-[15px] font-bold">المادة (2): مدة العقد</h2>
+            <h2 className={HEADING_TEXT_CLASS}>المادة (2): مدة العقد</h2>
             <p>
               مدة العقد{" "}
               <Highlight>{formatDurationAr(duration)}</Highlight>
@@ -361,7 +363,7 @@ export default function ContractPreview({
           </section>
 
           <section className="space-y-2">
-            <h2 className="text-[15px] font-bold">المادة (3): المقابل المالي</h2>
+            <h2 className={HEADING_TEXT_CLASS}>المادة (3): المقابل المالي</h2>
             <p>
               يدفع العميل للطرف الأول مبلغ{" "}
               <Highlight>
@@ -375,7 +377,7 @@ export default function ContractPreview({
           <StaticArticles />
 
           <section className="space-y-4 pt-2">
-            <h2 className="text-[15px] font-bold">المادة (12): نسخ العقد</h2>
+            <h2 className={HEADING_TEXT_CLASS}>المادة (12): نسخ العقد</h2>
             <p>
               حرّر هذا العقد من نسختين أصليتين بيد كل طرف نسخة للعمل بموجبها، وجرى
               توقيعه بتاريخ{" "}
@@ -463,7 +465,7 @@ function StaticArticles() {
     <>
       {articles.map((article) => (
         <section key={article.n} className="space-y-2">
-          <h2 className="text-[15px] font-bold">
+          <h2 className={HEADING_TEXT_CLASS}>
             المادة ({article.n}): {article.title}
           </h2>
           {typeof article.body === "string" ? <p>{article.body}</p> : article.body}

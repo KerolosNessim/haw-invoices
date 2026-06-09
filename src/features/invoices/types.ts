@@ -45,12 +45,14 @@ export type InvoiceRow = {
   currency: string;
   created_at: string;
   line_items_count: number;
+  notes?: string;
+  country_id?: number;
 };
 
 export type InvoiceDetail = InvoiceRow & {
   line_items: InvoiceLineItem[];
-  notes_ar?: string;
-  notes_en?: string;
+  country_name_ar?: string;
+  country_name_en?: string;
 };
 
 export type CreateInvoicePayload = {
@@ -60,6 +62,8 @@ export type CreateInvoicePayload = {
   company_name: string;
   discount?: number;
   tax?: number;
+  notes?: string;
+  country_id?: number;
   line_items: Array<{
     type: InvoiceCatalogType;
     id: string;

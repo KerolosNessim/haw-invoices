@@ -322,7 +322,7 @@ export default function ContractForm({ contractId }: Props) {
                     field.onChange(normalizeContractCurrency(value))
                   }
                 >
-                  <SelectTrigger className="h-12 w-full rounded-2xl">
+                  <SelectTrigger className="h-12! w-full rounded-2xl">
                     <SelectValue placeholder={t("currency")} />
                   </SelectTrigger>
                   <SelectContent>
@@ -346,7 +346,29 @@ export default function ContractForm({ contractId }: Props) {
               </Field>
             )}
           />
+        <div >
+          <FieldLabel className="mb-1 block text-base">{t("duration")}</FieldLabel>
+          <Controller
+            name="duration"
+            control={control}
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger className="h-12! w-full rounded-2xl">
+                  <SelectValue placeholder={t("duration")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {CONTRACT_DURATION_OPTIONS.map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {formatDurationAr(value)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
         </div>
+        </div>
+
 
         <div className="mt-8">
           <ContractServicesPicker
@@ -366,33 +388,13 @@ export default function ContractForm({ contractId }: Props) {
           ) : null}
         </div>
 
-        <div className="mt-8 max-w-xs">
-          <FieldLabel className="mb-3 block text-base">{t("duration")}</FieldLabel>
-          <Controller
-            name="duration"
-            control={control}
-            render={({ field }) => (
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger className="h-12 w-full rounded-2xl">
-                  <SelectValue placeholder={t("duration")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {CONTRACT_DURATION_OPTIONS.map((value) => (
-                    <SelectItem key={value} value={value}>
-                      {formatDurationAr(value)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
-        </div>
+
 
         <div className="mt-8 flex justify-start gap-3">
           <Button
             type="button"
             variant="outline"
-            className="rounded-xl"
+            className="rounded-xl h-12!"
             onClick={() =>
               navigate(isEdit && contractId ? `/contracts/${contractId}` : "/contracts")
             }
@@ -404,7 +406,7 @@ export default function ContractForm({ contractId }: Props) {
             disabled={
               isPending || servicesLoading || watched.service_ids.length === 0
             }
-            className="rounded-xl px-8 font-bold"
+            className="rounded-xl px-8 font-bold h-12!"
           >
             {isPending ? (
               <Loader2 className="me-2 h-4 w-4 animate-spin" />
